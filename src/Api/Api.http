@@ -1,0 +1,168 @@
+### =====================================================================
+### JwtBffSample API testleri
+### Ortam: "dev" (http-client.env.json). Önce admin şifresini user-secrets'ta
+### Seed:AdminPassword olarak "Admin!23456" yapın (veya env dosyasındaki şifreyi değiştirin).
+### İstekler yukarıdan aşağıya sırayla çalıştırılmalıdır.
+### =====================================================================
+
+
+### 1) Admin girişi (Admin rolü: tüm izinler)
+# @name adminLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+
+### 1b) Admin kimliği (userId için)
+# @name adminMe
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+
+
+### 2) Normal kullanıcı kaydı (User rolü: yalnızca products.read)
+### Kullanıcı zaten kayıtlıysa 400 döner; bu sorun değildir, adımı atlayabilirsiniz.
+### Kullanıcı kimliği 4. adımdaki /me yanıtından (userMe) alınır; böylece register adımına bağlı değildir.
+# @name register
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+
+### 3) Normal kullanıcı girişi
+# @name userLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+
+### 4) Kendi bilgilerim (oturum yeterli, izin gerekmez) -> 200
+# @name userMe
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{userLogin.response.body.$.accessToken}}
+
+
+### 5) Ürünleri listele (products.read) -> 200
+GET {{baseUrl}}/api/products
+Authorization: Bearer {{userLogin.response.body.$.accessToken}}
+
+
+### 6) Ürün ekle (products.write yok) -> 403
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+Authorization: Bearer {{userLogin.response.body.$.accessToken}}
+
+{
+  "name": "Yetkisiz ürün",
+  "price": 10
+}
+
+
+### 7) Token olmadan korumalı endpoint -> 401
+GET {{baseUrl}}/api/products
+
+
+### 8) Admin: kullanıcı listesi (users.read) -> 200
+### Normal kullanıcı ile denerseniz 403 döner.
+GET {{baseUrl}}/api/admin/users
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+
+
+### 9) Admin: normal kullanıcıya Admin rolü ata (yumuşak iptal)
+### Dönen yanıtta roller ve izinler güncellenir.
+POST {{baseUrl}}/api/admin/users/{{userMe.response.body.$.userId}}/roles
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+
+{
+  "role": "Admin"
+}
+
+
+### 10) YUMUŞAK İPTAL DOĞRULAMA: 9. adımdan ÖNCEKİ userLogin token'ı artık 401 dönmeli
+### (security stamp değişti). BFF bu durumda refresh ile yeni izinleri alır.
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{userLogin.response.body.$.accessToken}}
+
+
+### 11) Refresh rotasyonu: yeni access + refresh token al
+# @name refreshed
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{userLogin.response.body.$.refreshToken}}"
+}
+
+
+### 12) REUSE DETECTION: 11. adımda döndürülen eski refresh token tekrar kullanılırsa 401
+### ve o aileye ait tüm refresh token'lar iptal edilir.
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{userLogin.response.body.$.refreshToken}}"
+}
+
+
+### 13) Sert iptal: kullanıcıyı devre dışı bırak -> tüm refresh token'lar iptal
+POST {{baseUrl}}/api/admin/users/{{userMe.response.body.$.userId}}/disable
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+
+
+### 14) Devre dışı kullanıcı: 11. adımdaki access token artık 401
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{refreshed.response.body.$.accessToken}}
+
+
+### 15) Devre dışı kullanıcının refresh denemesi -> 401
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshed.response.body.$.refreshToken}}"
+}
+
+
+### 16) Kullanıcıyı tekrar aktifleştir (eski tokenlar iptal olduğu için kullanıcı yeniden giriş yapmalı)
+POST {{baseUrl}}/api/admin/users/{{userMe.response.body.$.userId}}/enable
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+
+
+### 17) Admin kendini devre dışı bırakamaz -> 409
+POST {{baseUrl}}/api/admin/users/{{adminMe.response.body.$.userId}}/disable
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+
+
+### 18) Brute force testi: yanlış şifreyle aynı e-postaya 6 kez istek gönderin.
+### E-posta bazlı sınır 15 dakikada 5 denemedir ve 3. adımdaki başarılı giriş de bu sayaca dahildir.
+### Bu yüzden 1-4. denemeler 401, 5. ve 6. denemeler 429 döner.
+### Hesap kilidi (5 yanlış şifre, 15 dakika) Identity tarafından uygulanır; 429 ile önce devreye girdiği için bu adımda görülmez.
+### Not: sınır bellekte tutulur. Tekrar denemek için 15 dakika bekleyin veya API'yi yeniden başlatın.
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "YanlisSifre!1"
+}
+
+
+### 19) Çıkış: refresh token'ı iptal eder
+POST {{baseUrl}}/api/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshed.response.body.$.refreshToken}}"
+}

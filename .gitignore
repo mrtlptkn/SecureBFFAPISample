@@ -1,0 +1,8 @@
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+node_modules/
+src/Web/wwwroot/css/site.css
+src/Api/App_Data/

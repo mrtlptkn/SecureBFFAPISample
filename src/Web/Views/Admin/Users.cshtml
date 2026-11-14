@@ -1,0 +1,59 @@
+@model AdminUsersViewModel
+@{
+    ViewData["Title"] = "Kullanıcılar";
+}
+
+<h1 class="text-2xl font-semibold">Kullanıcılar</h1>
+
+@if (Model.Error is not null)
+{
+    <p class="mt-2 text-sm text-red-600">@Model.Error</p>
+}
+
+<div class="mt-4 overflow-x-auto rounded-xl bg-white shadow">
+    <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+            <tr>
+                <th class="px-4 py-3">E-posta</th>
+                <th class="px-4 py-3">Roller</th>
+                <th class="px-4 py-3">Durum</th>
+                <th class="px-4 py-3">İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model.Users)
+            {
+                <tr class="border-t align-top">
+                    <td class="px-4 py-3">@user.Email</td>
+                    <td class="px-4 py-3">@string.Join(", ", user.Roles)</td>
+                    <td class="px-4 py-3">@(user.IsDisabled ? "Devre dışı" : "Aktif")</td>
+                    <td class="px-4 py-3">
+                        <div class="flex flex-wrap gap-2">
+                            <form asp-action="AssignRole" method="post" class="flex gap-2">
+                                <input type="hidden" name="id" value="@user.Id" />
+                                <select name="role" class="rounded border border-slate-300 px-2 py-1">
+                                    <option value="Admin">Admin</option>
+                                    <option value="User">User</option>
+                                </select>
+                                <button type="submit" class="rounded bg-slate-900 px-2 py-1 text-white hover:bg-slate-700">Rol ata</button>
+                            </form>
+
+                            <form asp-action="SetDisabled" method="post">
+                                <input type="hidden" name="id" value="@user.Id" />
+                                <input type="hidden" name="disabled" value="@(!user.IsDisabled)" />
+                                <button type="submit" class="rounded border border-slate-300 px-2 py-1 hover:bg-slate-50">
+                                    @(user.IsDisabled ? "Aktifleştir" : "Devre dışı bırak")
+                                </button>
+                            </form>
+
+                            <form asp-action="ForceLogout" method="post">
+                                <input type="hidden" name="id" value="@user.Id" />
+                                <button type="submit" class="rounded border border-red-300 px-2 py-1 text-red-700 hover:bg-red-50">Oturumları kapat</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

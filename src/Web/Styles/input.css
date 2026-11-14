@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+/* Razor view'larındaki class'ların taranması için */
+@source "../Views";

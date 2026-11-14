@@ -1,0 +1,30 @@
+@model RegisterForm
+@{
+    ViewData["Title"] = "Kayıt";
+}
+
+<div class="mx-auto max-w-sm rounded-xl bg-white p-6 shadow">
+    <h1 class="mb-4 text-xl font-semibold">Kayıt ol</h1>
+
+    <form asp-action="Register" method="post" class="space-y-4">
+        <div asp-validation-summary="ModelOnly" class="text-sm text-red-600"></div>
+
+        <div>
+            <label asp-for="Email" class="block text-sm font-medium"></label>
+            <input asp-for="Email" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" />
+            <span asp-validation-for="Email" class="text-sm text-red-600"></span>
+        </div>
+
+        <div>
+            <label asp-for="Password" class="block text-sm font-medium"></label>
+            <input asp-for="Password" type="password" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" />
+            <span asp-validation-for="Password" class="text-sm text-red-600"></span>
+        </div>
+
+        <button type="submit" class="w-full rounded bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700">Kayıt ol</button>
+    </form>
+
+    <p class="mt-4 text-sm">
+        Zaten hesabınız var mı? <a asp-action="Login" class="underline">Giriş yapın</a>
+    </p>
+</div>

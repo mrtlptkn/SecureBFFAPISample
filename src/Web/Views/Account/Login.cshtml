@@ -1,0 +1,35 @@
+@model LoginForm
+@{
+    ViewData["Title"] = "Giriş";
+}
+
+<div class="mx-auto max-w-sm rounded-xl bg-white p-6 shadow">
+    <h1 class="mb-4 text-xl font-semibold">Giriş yap</h1>
+
+    @if (ViewBag.Expired is true)
+    {
+        <p class="mb-4 rounded bg-amber-50 p-3 text-sm text-amber-800">Oturumunuz sona erdi. Lütfen tekrar giriş yapın.</p>
+    }
+
+    <form asp-action="Login" method="post" class="space-y-4">
+        <div asp-validation-summary="ModelOnly" class="text-sm text-red-600"></div>
+
+        <div>
+            <label asp-for="Email" class="block text-sm font-medium"></label>
+            <input asp-for="Email" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" />
+            <span asp-validation-for="Email" class="text-sm text-red-600"></span>
+        </div>
+
+        <div>
+            <label asp-for="Password" class="block text-sm font-medium"></label>
+            <input asp-for="Password" type="password" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" />
+            <span asp-validation-for="Password" class="text-sm text-red-600"></span>
+        </div>
+
+        <button type="submit" class="w-full rounded bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700">Giriş</button>
+    </form>
+
+    <p class="mt-4 text-sm">
+        Hesabınız yok mu? <a asp-action="Register" class="underline">Kayıt olun</a>
+    </p>
+</div>
