@@ -127,12 +127,12 @@ builder.Services.AddRateLimiter(o =>
 var app = builder.Build();
 
 // ---------- Migration ve seed ----------
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
-    await IdentitySeeder.SeedAsync(scope.ServiceProvider, builder.Configuration);
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+//    await db.Database.MigrateAsync();
+//    await IdentitySeeder.SeedAsync(scope.ServiceProvider, builder.Configuration);
+//}
 
 // ---------- Pipeline ----------
 app.UseRateLimiter();

@@ -30,11 +30,20 @@ public static class SecurityStampValidator
             return;
         }
 
-        var users = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+        var services = context.HttpContext.RequestServices;
+        var users = services.GetRequiredService<UserManager<ApplicationUser>>();
         var user = await users.FindByIdAsync(userId.ToString());
 
         if (user is null || user.IsDisabled || user.SecurityStamp != tokenStamp)
         {
+            var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(SecurityStampValidator).FullName!);
+            var reason = user is null ? "user-not-found"
+                : user.IsDisabled ? "user-disabled"
+                : "security-stamp-mismatch";
+            logger.LogInformation(
+                "Access token rejected. UserId={UserId} Jti={Jti} Reason={Reason}",
+                userId, principal?.FindFirst("jti")?.Value, reason);
+
             context.Fail("Token artık geçerli değil.");
         }
     }

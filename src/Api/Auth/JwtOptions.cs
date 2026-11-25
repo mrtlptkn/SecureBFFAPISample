@@ -10,6 +10,6 @@ public sealed class JwtOptions
     /// <summary>En az 32 karakter. user-secrets ile ayarlanmalı.</summary>
     public string Key { get; init; } = "";
 
-    public int AccessTokenMinutes { get; init; } = 15;
+    public int AccessTokenMinutes { get; init; } = 2;
     public int RefreshTokenDays { get; init; } = 7;
 }

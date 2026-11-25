@@ -8,7 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Api.Auth;
 
-public sealed class JwtTokenService(IOptions<JwtOptions> options)
+public sealed class JwtTokenService(IOptions<JwtOptions> options, ILogger<JwtTokenService> logger)
 {
     private readonly JwtOptions _options = options.Value;
 
@@ -23,11 +23,13 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
         var now = DateTimeOffset.UtcNow;
         var expires = now.AddMinutes(_options.AccessTokenMinutes);
 
+        var jti = Guid.NewGuid().ToString();
+
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(JwtRegisteredClaimNames.Jti, jti),
             // Security stamp: kullanıcının yetkisi/durumu değişince bu değer eşleşmez ve token reddedilir
             new(Permissions.SecurityStampClaimType, user.SecurityStamp ?? string.Empty)
         };
@@ -42,6 +44,13 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
             expires: expires.UtcDateTime,
             signingCredentials: _credentials);
 
-        return (new JwtSecurityTokenHandler().WriteToken(token), expires);
+        var encoded = new JwtSecurityTokenHandler().WriteToken(token);
+
+        // TODO: Yalnızca test amaçlı! Access token maskelenmeden loglanıyor. Test bitince AccessToken alanını kaldırın.
+        logger.LogInformation(
+            "Access token issued. UserId={UserId} Jti={Jti} ExpiresAt={ExpiresAt} PermissionCount={PermissionCount} AccessToken={AccessToken}",
+            user.Id, jti, expires, permissions.Count, encoded);
+
+        return (encoded, expires);
     }
 }

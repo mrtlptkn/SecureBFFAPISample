@@ -17,7 +17,8 @@ public sealed class AuthService(
     UserManager<ApplicationUser> users,
     PermissionService permissions,
     JwtTokenService jwt,
-    RefreshTokenService refreshTokens)
+    RefreshTokenService refreshTokens,
+    ILogger<AuthService> logger)
 {
   private const string GenericLoginError = "E-posta veya şifre hatalı.";
   private const string GenericSessionError = "Oturum geçersiz. Lütfen tekrar giriş yapın.";
@@ -91,6 +92,7 @@ public sealed class AuthService(
     await users.ResetAccessFailedCountAsync(user);
 
     var tokens = await IssueTokensAsync(user, familyId: null, ct);
+    logger.LogInformation("Login succeeded, new token pair issued. UserId={UserId}", user.Id);
     return ServiceResult<TokenResponse>.Ok(tokens);
   }
 
@@ -107,17 +109,26 @@ public sealed class AuthService(
     // RotateAsync gelen token'ın hash'ini bulur. Bulamazsa 401 döndürür. 
     var rotation = await refreshTokens.RotateAsync(request.RefreshToken, ct);
     if (!rotation.Succeeded)
+    {
+      logger.LogInformation("Token refresh failed: refresh token is invalid, expired or reused.");
       return ServiceResult<TokenResponse>.Fail(StatusCodes.Status401Unauthorized, GenericSessionError);
+    }
 
     var user = await users.FindByIdAsync(rotation.UserId.ToString());
     if (user is null || user.IsDisabled)
     {
+      logger.LogInformation(
+        "Token refresh failed: user not found or disabled. UserId={UserId} FamilyId={FamilyId}",
+        rotation.UserId, rotation.FamilyId);
       await refreshTokens.RevokeFamilyAsync(rotation.FamilyId, "user-invalid", ct);
       return ServiceResult<TokenResponse>.Fail(StatusCodes.Status401Unauthorized, GenericSessionError);
     }
 
     // Aynı aileyle yeni refresh token; izinler veritabanından yeniden okunur
     var tokens = await IssueTokensAsync(user, rotation.FamilyId, ct);
+    logger.LogInformation(
+      "Token refresh succeeded, access and refresh tokens replaced. UserId={UserId} FamilyId={FamilyId}",
+      user.Id, rotation.FamilyId);
     return ServiceResult<TokenResponse>.Ok(tokens);
   }
 

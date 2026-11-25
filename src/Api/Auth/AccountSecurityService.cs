@@ -16,7 +16,8 @@ namespace Api.Auth;
 public sealed class AccountSecurityService(
     UserManager<ApplicationUser> users,
     RoleManager<IdentityRole<Guid>> roles,
-    RefreshTokenService refreshTokens)
+    RefreshTokenService refreshTokens,
+    ILogger<AccountSecurityService> logger)
 {
     /// <summary>
     /// Tüm kullanıcıları e-posta adresine göre sıralı şekilde listeler.
@@ -203,8 +204,13 @@ public sealed class AccountSecurityService(
     ///  - <see cref="SetRolePermissionsAsync"/>: bir rolün izinleri güncellendikten sonra, o role sahip
     ///    her kullanıcı için tek tek (eski izinlerle üretilmiş token'lar geçersiz kılınır).
     /// </summary>
-    private Task SoftInvalidateAsync(ApplicationUser user) =>
-        users.UpdateSecurityStampAsync(user);
+    private async Task SoftInvalidateAsync(ApplicationUser user)
+    {
+        await users.UpdateSecurityStampAsync(user);
+        logger.LogInformation(
+            "Soft invalidation: security stamp updated, existing access tokens revoked, refresh tokens kept. UserId={UserId}",
+            user.Id);
+    }
 
     /// <summary>
     /// Sert iptal: kullanıcının security stamp değerini günceller VE kullanıcıya ait tüm refresh
@@ -221,6 +227,9 @@ public sealed class AccountSecurityService(
     private async Task HardInvalidateAsync(ApplicationUser user, string reason, CancellationToken ct)
     {
         await users.UpdateSecurityStampAsync(user);
+        logger.LogInformation(
+            "Hard invalidation: security stamp updated, existing access tokens revoked. UserId={UserId} Reason={Reason}",
+            user.Id, reason);
         await refreshTokens.RevokeAllForUserAsync(user.Id, reason, ct);
     }
 

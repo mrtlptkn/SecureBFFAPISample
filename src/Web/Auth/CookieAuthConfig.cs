@@ -23,7 +23,7 @@ public static class CookieAuthConfig
         options.LogoutPath = "/Account/Logout";
         options.AccessDeniedPath = "/Home/Forbidden";
 
-        options.Events.OnValidatePrincipal = ValidateAsync;
+        options.Events.OnValidatePrincipal = ValidateAsync; // Kullanıcı Login olduktan sonra Bilgileri Cache atılır. Eğer permisionlarında veya rollerinde login olup oturum açıldıktan sonra bir değişiklik olursa oturumu açık iken her istek de cachede güncellenenen son bilgilere göre session'ı güncelleriz.
     }
 
     /// <summary>
@@ -46,10 +46,12 @@ public static class CookieAuthConfig
             return;
         }
 
+        // token içine gömülen eski permission bilgilerini silip cachedeki güncel hallinden yenide dolduruyoruz.
         var identity = context.Principal!.Identities.First();
         foreach (var existing in identity.FindAll(Permissions.ClaimType).ToList())
             identity.RemoveClaim(existing);
 
+        // sessionda yeniden yükle
         foreach (var permission in session.Permissions)
             identity.AddClaim(new Claim(Permissions.ClaimType, permission));
     }
